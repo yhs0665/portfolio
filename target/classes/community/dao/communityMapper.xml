@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+ 
+  <mapper namespace="communitySQL">
+  	
+  	<!-- 글쓰기 -->
+ 	<insert id="community_Write" parameterType="community">
+ 		begin
+	 		insert into community(category,seq,email, nickName, palette, subject,content, testURL,comLogtime,image,hashtag1) 
+	 		values(			#{category},
+	 						seq.nextval, <!-- seq: 글번호 -->
+					 		#{email},
+					 		#{nickName},
+					 		#{palette},
+					 		#{subject},
+					 		#{content},
+					 		'null',
+					 		sysdate,
+					 		#{image},
+					 		'null'
+					 		); <!-- ref: 그룹번호는 seq와 똑같다 -->
+					 		
+			insert into likeSingo(seq, category, nickName, email, palette, likeLogtime) 
+	 			values(	seq.currval,
+					 		#{category},
+					 		#{nickName},
+					 		#{email},
+					 		#{palette},
+					 		sysdate			 		
+					 		);
+					 		
+			<!-- 하루에 5개 게시글까지만 포인트 얻기 >포인트내역 -->	 		
+			insert all
+			when  <![CDATA[ todayWriteCount <= 4]]> then 
+			into pointhistory 
+			values( 
+	        pointhistory_seq.nextval,
+	        #{email},
+	         sysdate,
+	        '게시글 등록 포인트',
+	        100,
+	         0) 
+    		select * from simrimember where  <![CDATA[ todayWriteCount <= 4]]> and email=#{email};			
+			
+						
+			update simrimember set todayWriteCount = todayWriteCount+1, writeDate = sysdate where email = #{email};
+			
+			update simrimember set point = point+100 where email = #{email} and <![CDATA[ todayWriteCount <= 5;]]>
+		end;
+ 	</insert>
+  
+    <!-- 통합 게시글 리스트 갖고오기 -->
+    <select id="getTotalCommunity_List" parameterType="java.util.Map" resultType="community">
+       select * from 
+       (select rownum rn, tt. * from 
+       (select * from community
+       where category in('[팔레트]빨강','[팔레트]파랑' ,'[팔레트]노랑', '[팔레트]초록' , '유머 게시판', '연애 게시판', '고민&amp;상담 게시판') 
+       order by comlogtime desc)tt)
+       where <![CDATA[rn>= #{startNum}]]> and  <![CDATA[rn<= #{endNum}]]>
+    </select>
+    
+    <!-- 전체 게시글 갖고오기 -->
+    <select id="getTotalPaletteCommunity_List" parameterType="java.util.Map" resultType="community">
+       select * from 
+       (select rownum rn, tt. * from 
+       (select * from community 
+        where category in('[팔레트]빨강','[팔레트]파랑' ,'[팔레트]노랑', '[팔레트]초록') 
+        order by comlogtime desc)tt)
+       where <![CDATA[rn>= #{startNum}]]> and  <![CDATA[rn<= #{endNum}]]>
+    </select>
+    
+    <!-- 그 외 게시글 갖고오기 -->
+    <select id="getElseCommunity_List" parameterType="java.util.Map" resultType="community">
+       select * from 
+       (select rownum rn, tt. * from 
+       (select * from community 
+        where category = #{sideCategory}
+        order by comlogtime desc)tt)
+       where <![CDATA[rn>= ${startNum}]]> and  <![CDATA[rn<= ${endNum}]]>
+    </select>
+    
+      
+      <!-- 통합 게시글 등록된 글자수 -->
+    <select id="getTotalA" resultType="int">
+       select count(*) from community where category in('[팔레트]빨강','[팔레트]파랑' ,'[팔레트]노랑', '[팔레트]초록', '유머 게시판', '연애 게시판', '고민&amp;상담 게시판')
+    </select>
+    
+      <!-- 전체 팔레트 게시글 등록된 글자수 -->
+    <select id="getPaletteTotalA" resultType="int">
+       select count(*) from community
+        where category in('[팔레트]빨강','[팔레트]파랑' ,'[팔레트]노랑', '[팔레트]초록')
+    </select>
+    
+      <!--그 외 게시글 등록된 글자수 -->
+    <select id="getElseTotalA" parameterType="String" resultType="int">
+       select count(*) from community
+       where category = #{sideCategory}
+    </select>
+  
+        <!-- 통합 검색한 리스트 갖고오기 -->
+      <select id="community_totSearch" parameterType="java.util.Map" resultType="community">
+	       <![CDATA[
+	       select * from 
+	      (select rownum rn, tt.* from
+	      (select * from community where  ${searchOption} like '%'||#{keyword}||'%' order by comlogtime desc
+	       )tt)
+	      where rn>= #{startNum} and rn<= #{endNum}
+	       ]]>
+      </select>
+   
+    <!-- 팔레트 검색한 리스트 갖고오기 -->
+      <select id="community_paletteSearch" parameterType="java.util.Map" resultType="community">
+	       <![CDATA[
+	       select * from 
+	      (select rownum rn, tt.* from
+	      (select * from community where  ${searchOption} like '%'||#{keyword}||'%' 
+	       							and category in('[팔레트]빨강','[팔레트]파랑' ,'[팔레트]노랑', '[팔레트]초록') 
+	       							order by comlogtime desc
+	                    			 )tt)
+	      where rn>= #{startNum} and rn<= #{endNum}
+	       ]]>
+      </select>
+      
+   
+    <!-- 그 외 검색한 리스트 갖고오기 -->
+      <select id="community_elseSearch" parameterType="java.util.Map" resultType="community">
+	       <![CDATA[
+	       select * from 
+	      (select rownum rn, tt.* from
+	      (select * from community where  ${searchOption} like '%'||#{keyword}||'%'
+	      									 and category = #{sideCategory}
+	      									 order by comlogtime desc
+	                   						  )tt)
+	      where rn>= #{startNum} and rn<= #{endNum}
+	       ]]>
+       </select>
+   
+
+       <!--  검색한 총글수 -->  
+    <select id="getSearchTotalA"  parameterType="java.util.Map" resultType="int">
+          select count(*) from community where ${searchOption} like '%'||#{keyword}||'%'
+    </select>
+    
+    <!-- 등록한 글 seq -->
+    <select id="getSeq" resultType="int">
+       select seq from(select * from community order by comlogtime desc) where rownum =1
+    </select>
+    
+     <!-- 글 갖고오기 -->
+    <select id="getCommunity" parameterType="int" resultType="community">
+       select * from community where seq=#{seq}
+    </select>
+    
+  
+   <!-- 조회수 -->
+   <update id="hitUpdate" parameterType="int"> 
+   begin
+      update community set hit=hit+1 where seq=#{seq};
+      
+      insert into etctest(seq,etclogtime,hithit) values( #{seq}, to_char(sysdate, 'yy/mm/dd'), 1);
+   end;
+   </update>
+  
+  	<!-- 글 수정 -->
+	<update id="community_Modify" parameterType="community"> 
+		update community set category=#{category}, subject=#{subject}, content=#{content}, image=#{image}, comlogtime=sysdate where seq=#{seq}
+	</update>
+  
+    <!-- 답글 삭제 -->
+   	<delete id="community_Delete" parameterType="int">
+ 		     delete community where seq=#{seq}
+ 	</delete>
+ 	
+    <!-- 댓글작성 -->
+	<insert id="replyWrite" parameterType="reply">
+		begin
+ 			insert into reply(seq, replySeq, ref, nickName, email, palette, profile, replyComment, replyLogtime) 
+ 			values(			#{seq},<!-- 원글 번호 -->
+ 							replySeq.nextval, <!-- 댓글번호 -->
+					 		replySeq.nextval,
+				 			#{nickName},
+				 			#{email},
+				 			#{palette},
+				 			#{profile},
+				 			#{replyComment},
+				 			sysdate				 		
+				 			); <!-- ref: 그룹번호는 seq와 똑같다 -->
+			update community set reply=reply+1 where seq=#{seq};	 			
+		end;
+ 	</insert>
+
+    <!-- 댓글 리스트 -->
+    <select id="getReplyList" parameterType="int" resultType="reply">
+      select * from reply where seq=#{seq} order by ref desc, step asc
+    </select>
+    
+    <!-- 원댓 -->
+    <select id="getReply" parameterType="int" resultType="reply">
+       select * from reply where replySeq=#{replySeq}      
+    </select>
+    
+    <!-- 대댓 -->
+    <insert id="rereplyWrite" parameterType="reply">
+ 		begin
+ 			update reply set step=step+1 where ref=#{ref} and step>#{step};
+ 			
+ 			insert into reply(seq, replySeq, ref, lev, step, pseq, nickName, email, palette, profile, replyComment, replyLogtime) 
+ 			values(			#{seq},<!-- 원글 번호 -->
+ 						replySeq.nextval, <!-- 댓글번호 -->
+				 		#{ref},
+				 		#{lev}+1,
+				 		#{step}+1,
+				 		#{replySeq},
+				 		#{nickName},
+				 		#{email},
+				 		#{palette},
+				 		#{profile},
+				 		#{replyComment},
+				 		sysdate				 		
+				 		); <!-- ref: 그룹번호는 seq와 똑같다 -->
+			update reply set reply=reply+1 where replySeq=#{replySeq}; 	
+			update community set reply=reply+1 where seq=#{seq};	 	
+		end;
+ 	</insert>
+ 	
+ 	<!-- 댓글 삭제 -->
+   	<delete id="reply_Delete" parameterType="int">
+		update reply set replyComment= '[삭제된 댓글 입니다]' where replySeq=#{replySeq}		
+ 	</delete>
+ 	
+ 	<!-- 댓글 수정 -->
+	<update id="reply_Modify" parameterType="reply"> 
+		update reply set replyComment=#{replyComment}, replyLogtime=sysdate where replySeq=#{replySeq}
+	</update>
+	
+	<!-- getCommunity_Notice 리스트 갖고오기 -->
+    <select id="getCommunity_Notice" parameterType="java.util.Map" resultType="community">
+       select * from 
+       (select rownum rn, tt. * from 
+       (select * from community where category= '[공지사항]'  order by comlogtime desc)tt)
+       where <![CDATA[rn>= #{startNum}]]> and  <![CDATA[rn<= #{endNum}]]>
+    </select>
+	
+	<!-- getCommunity_Main 리스트 갖고오기 -->
+    <select id="getCommunity_Main" parameterType="java.util.Map" resultType="community">
+       select * from 
+       (select rownum rn, tt. * from 
+       (select * from community
+       where category in('[팔레트]빨강','[팔레트]파랑' ,'[팔레트]노랑', '[팔레트]초록' , '유머 게시판', '연애 게시판', '고민&amp;상담 게시판') 
+       order by comlogtime desc)tt)
+       where <![CDATA[rn>= #{startNum}]]> and  <![CDATA[rn<= #{endNum}]]>
+    </select>
+    
+    <!-- getCommunity_Humor 리스트 갖고오기 -->
+    <select id="getCommunity_Humor" parameterType="java.util.Map" resultType="community">
+       select * from 
+       (select rownum rn, tt. * from 
+       (select * from community where category= '유머 게시판' order by comlogtime desc)tt)
+       where <![CDATA[rn>= #{startNum}]]> and  <![CDATA[rn<= #{endNum}]]>
+    </select>
+    
+    <!-- getCommunity_Love 리스트 갖고오기 -->
+    <select id="getCommunity_Love" parameterType="java.util.Map" resultType="community">
+       select * from 
+       (select rownum rn, tt. * from 
+       (select * from community where category= '연애 게시판' order by comlogtime desc)tt)
+       where <![CDATA[rn>= #{startNum}]]> and  <![CDATA[rn<= #{endNum}]]>
+    </select>
+    
+    <!-- getCommunity_QnA 리스트 갖고오기 -->
+    <select id="getCommunity_QnA" parameterType="java.util.Map" resultType="community">
+       select * from 
+       (select rownum rn, tt. * from 	
+       (select * from community where category= '고민&amp;상담 게시판' order by comlogtime desc)tt)<!-- mapper는 &가 안되서 &amp;로 해놓음 -->
+       where <![CDATA[rn>= #{startNum}]]> and  <![CDATA[rn<= #{endNum}]]>
+    </select>
+    
+    <!-- 좋아요 -->
+    <update id="like" parameterType="likesingo">
+    	begin
+    		update likeSingo set likes=1 where seq = #{seq} and email=#{email} and replySeq=0;
+    		update community set comLike = comLike+1 where seq = #{seq};
+    		insert into etctest(seq, email, etclogtime, likelike) values( #{seq}, #{email}, sysdate, 1);
+    	end;
+    </update>
+    
+    <!-- 좋아요 check -->
+    <select id="likeCheck" parameterType="likesingo" resultType="Integer">
+    	select likes from likeSingo where seq=#{seq} and email=#{email} and replySeq=0  
+    </select>
+    
+    <!-- 좋아요 cancel -->
+    <update id="likeCancel" parameterType="likesingo">
+    	begin
+    		update likeSingo set likes=0 where seq = #{seq} and email=#{email} and replySeq=0;
+    		update community set comLike = comLike-1 where seq = #{seq};
+    		update etctest set likelike = likelike-1 where seq = #{seq} and email=#{email};
+    	end;
+    </update>
+    
+    <!-- 좋아요 테이블 삽입 -->
+    <insert id="likeInsert" parameterType="likesingo">
+    insert into likeSingo(seq, replySeq, category, nickName, email, palette, likeLogtime) 
+ 			values(		#{seq},
+ 						0,						
+				 		#{category},
+				 		#{nickName},
+				 		#{email},
+				 		#{palette},
+				 		sysdate				 		
+				 		)
+	</insert>
+    
+     <!-- 신고 -->
+    <insert id="singo" parameterType="java.util.Map">
+    	begin
+    		update likeSingo set singo=1 where seq = #{seq} and email=#{email} and replySeq = 0;
+    		update community set comSingo = comSingo+1, comSingoReason = #{singoReason} where seq = #{seq};
+    		update simriMember set memSingo = memSingo+1, singoReason = #{singoReason} where email = #{singoEmail}; 
+    	end;
+    </insert>
+    
+    <!-- 신고 check -->
+    <select id="singoCheck" parameterType="likesingo" resultType="Integer">
+    	select singo from likeSingo where seq=#{seq} and email=#{email} and replySeq = #{replySeq} 
+    </select>
+    
+    <!-- 댓글 신고 check -->
+    <select id="replySingoCheck" parameterType="likesingo" resultType="Integer">
+    	select singo from likeSingo where seq=#{seq} and email=#{email} and replySeq = #{replySeq} 
+    </select>    
+    
+    <!-- 신고 cancel -->
+    <update id="singoCancel" parameterType="likesingo">
+    	begin
+    		update likeSingo set singo=0 where seq = #{seq} and email=#{email} and replySeq = 0;
+    		update community set comSingo = comSingo-1 where seq = #{seq};
+    		update simriMember set memSingo = memSingo-1, singoReason = #{singoReason} where email = #{singoEmail}; 
+    	end;
+    </update>
+    
+    <!-- 신고 테이블 삽입 -->
+    <insert id="singoInsert" parameterType="likesingo">
+    insert into likeSingo(seq, replySeq, category, nickName, email, palette, likeLogtime) 
+ 			values(		#{seq},
+ 						#{replySeq},						
+				 		#{category},
+				 		#{nickName},
+				 		#{email},
+				 		#{palette},
+				 		sysdate				 		
+				 		)
+	</insert>
+
+	<!-- 댓글 신고 테이블 삽입 -->
+    <insert id="replySingoInsert" parameterType="likesingo">
+    insert into likeSingo(seq, replySeq, category, nickName, email, palette, likeLogtime) 
+ 			values(		#{seq},
+ 						#{replySeq},						
+				 		#{category},
+				 		#{nickName},
+				 		#{email},
+				 		#{palette},
+				 		sysdate				 		
+				 		)
+	</insert>
+
+  	<!-- 댓글 신고 -->
+  	<update id="replySingo" parameterType="java.util.Map">
+		begin
+			update likeSingo set singo=1 where seq=#{seq} and email=#{email} and replySeq=#{replySeq};
+			update reply set replySingoReason=#{singoReason}, replySingo = replySingo+1 where replySeq=#{replySeq};
+			update simriMember set memSingo = memSingo+1, singoReason = #{singoReason} where email = #{singoEmail}; 
+		end;		
+	</update>
+  
+      
+    <!-- 댓글 수 가져오기 
+    <select id="getReplyCount" parameterType="int" resultType="int">
+       select count(*) from reply where seq=#{seq}
+    </select>
+    
+    
+    	 댓글 수 변경 
+	<update id="updateCommunityReplyCount" parameterType="java.util.Map">
+		delete community where seq in 
+		<foreach collection="array" item="data" open="(" close=")" separator=",">
+			 #{data}
+		</foreach>
+		update community set reply in
+		<foreach collection="replyCountList" item="data" open="(" close=")" separator=",">
+			 #{data}
+		</foreach>
+		where seq in
+		<foreach collection="list" item="data" open="(" close=")" separator=",">
+			 #{data}
+		</foreach>
+	</update>-->
+ </mapper>

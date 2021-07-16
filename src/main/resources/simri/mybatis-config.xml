@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration
+ PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-config.dtd">
+ 
+<configuration>
+	<typeAliases>
+	
+		<typeAlias type="community.bean.CommunityDTO" alias="community"/>
+		<typeAlias type="community.bean.ReplyDTO" alias="reply"/>
+		<typeAlias type="member.bean.MemberDTO" alias="member" />
+		<typeAlias type="member.bean.ExitMemberDTO" alias="exitMember" />
+		<typeAlias type="myPage.bean.PointHistoryDTO" alias="pointHistory" />
+		<typeAlias type="community.bean.LikeSingoDTO" alias="likesingo" />
+		<typeAlias type="myPage.bean.TotalPointHistoryDTO" alias="totalPointHistory" />
+		<typeAlias type="myPage.bean.LikeListDTO" alias="LikeList" />
+		<typeAlias type="simri.bean.SimriDTO" alias="simri" />
+		<typeAlias type="simri.bean.AdvertiseDTO" alias="advertise" />
+	</typeAliases>
+</configuration>

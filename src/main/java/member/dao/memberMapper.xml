@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="memberSQL">
+
+   <!-- 중복체크 -->
+   <select id="getMemberDTO" parameterType="String"
+      resultType="member">
+      select * from simrimember where email=#{email}
+   </select>
+   
+	<!-- 회원가입인가.. -->
+	<insert id="write" parameterType="member">
+	
+	begin
+	
+		insert into simrimember (email, name, nickname, pwd, profile, palette, point) values(#{email},#{name},#{nickname},#{pwd}, #{profile},#{palette}, 200); 
+	
+		insert into pointHistory values (pointhistory_seq.nextval,#{email},sysdate,'회원가입 축하 포인트 지급',200,0);
+		
+		
+	
+	end;
+	
+	</insert>
+	
+	<!-- 로그인 -->
+	<select id="login" parameterType="java.util.Map" resultType="member">  <!-- parameterType: 받아온 데이터 어떤타입으로 받앗나 / 한줄의 데이터를 어디에 담을지 resultType으로 거론해준다. -->
+		select * from simrimember where email=#{email} and pwd=#{pwd} and joinType = 'normal'
+	</select>
+
+	<!-- 비번변경 -->
+	<update id="update_pwd" parameterType="member">
+		update simrimember set pwd = #{pwd} where email = #{email}
+	</update>
+	
+	 <!-- 소셜 로그인 가져옥; -->
+	 <select id="socialLogin" parameterType="java.util.Map" resultType="member">  <!-- parameterType: 받아온 데이터 어떤타입으로 받앗나 / 한줄의 데이터를 어디에 담을지 resultType으로 거론해준다. -->
+	    select * from simrimember where email=#{email}
+	 </select>
+	 
+	 <!-- 소셜 회원가입인가.. -->
+	<insert id="socialWrite" parameterType="member">
+		insert into simrimember (email, name, nickname, pwd, profile, palette, joinType) values(#{email},#{name},#{nickname},#{pwd},#{profile},#{palette}, #{joinType} )	 
+	</insert>
+	
+	<!-- 닉네임 변경권 1개 -->
+	<update id="nickChangePlus" parameterType="String">
+		update simrimember set changenick = changenick+1, where email = #{email}
+	</update>
+	
+	    
+    <!-- 탈퇴테이블에 있는 아이디인가 -->
+    <select id="checkExitId" parameterType="String" resultType="exitMember">
+       select * from exitmember where email=#{id}
+    </select>
+    
+    <!-- 정지회원 체크 -->
+    <select id="conditionCheck" parameterType="String" resultType="member">
+    	select * from simrimember where email=#{email} and condition='정지'
+    </select>
+	
+	<!-- 하루 쓰는 글 0으로 초기화 -->
+	<update id="todayWriteCountReset" parameterType="String">
+		update simrimember set todayWriteCount = 0 where email = #{email}
+	</update>
+	
+</mapper>

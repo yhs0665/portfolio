@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="mypageSQL">
+	<!-- 마이페이지 내가쓴글 리스트 갖고오기 -->
+	<select id="getMypageBoardList" parameterType="java.util.Map"	resultType="community">
+       <![CDATA[
+       select * from 
+      (select rownum rn, tt.* from
+      (select * from community where email=#{email} order by seq desc
+                     )tt)
+      where rn>= #{startNum} and rn<= #{endNum}
+       ]]>
+	</select>
+   
+     <!-- 마이페이지 내가쓴 글 개수 -->
+    <select id="getMypageboardTotalA" parameterType="String" resultType="int">
+       select count(*) from community where email=#{email}
+    </select>
+	
+	<!-- 닉네임 수정 -->
+	<update id="modify" parameterType="member">
+		update simrimember set name=#{name}, 
+						   pwd=#{pwd} where email=#{email}
+	</update>
+	
+	<!-- 닉네임권 사용 -->
+	<update id="useNicknameItem" parameterType="java.util.Map">
+		update simrimember set nickname=#{nickname}, changenick = changenick -1 where email=#{email}
+						
+	</update>
+	
+	<!-- 삭제 -->
+	<delete id="myPageBoardDelete" parameterType="java.util.Map">
+		delete community where seq in 
+		<foreach collection="array" item="data" open="(" close=")" separator=",">
+			 #{data}
+		</foreach>
+	</delete>
+	
+	<!-- 마이페이지 내가쓴 댓글 리스트 갖고오기 -->
+	<select id="getMypageReplyList" parameterType="java.util.Map"	resultType="reply">
+       <![CDATA[
+       select * from 
+      (select rownum rn, tt.* from
+      (select * from reply where email=#{email} order by replySeq desc
+                     )tt)
+      where rn>= #{startNum} and rn<= #{endNum}
+       ]]>
+	</select>
+	
+	 <!-- 마이페이지 내가쓴 댓글 개수 -->
+    <select id="getMypageReplyTotalA" parameterType="String" resultType="int">
+       select count(*) from reply where email=#{email}
+    </select>
+    
+    <!-- 삭제 -->
+	<delete id="myPageReplyDelete" parameterType="java.util.Map">
+		delete reply where replySeq in 
+		<foreach collection="check" item="data" open="(" close=")" separator=",">
+			 #{data}
+		</foreach>
+	</delete>
+	
+    <!-- 프로필 -->
+	<update id="profile_upload" parameterType="member">
+		update simrimember set profile=#{profile} 
+						   where email=#{email}
+	</update>
+ 
+    
+    <!-- 닉넴 체인지 구입 -->
+    <update id="nickChange" parameterType="java.util.Map">
+		update simrimember set changenick=changenick+1, point=point-1000 where email=#{email}
+	</update>
+	
+	<!-- 컬러 체인지 구입 -->
+    <update id="colorChange" parameterType="java.util.Map">
+		update simrimember set palette=#{item}, point=point-#{cost} where email=#{email}
+	</update>
+	
+	<!-- 포인트 충전 -->
+	<update id="pointCharge" parameterType="java.util.Map">
+		update simrimember set point = point+#{point} where email = #{email}	 
+	</update>
+
+	<!-- 탈퇴 -->
+	<delete id="realExitMember" parameterType="java.util.Map">
+	begin
+		 delete from simrimember where email=#{email};
+	
+		 insert into exitMember values (#{email}, #{reason}, sysdate);
+		 
+	end;
+	</delete>
+	
+	<!-- 마이페이지 찜한 리스트 갖고오기 -->
+	<select id="getMypageLikeList" parameterType="java.util.Map" resultType="LikeList">
+       <![CDATA[
+       select * from 
+      (select rownum rn, tt.* from
+      (SELECT c.image,c.category, c.subject, c.seq, l.email, l.likes, l.likelogtime
+		FROM likesingo l LEFT OUTER JOIN community c
+		ON l.seq = c.seq
+		WHERE l.email= #{email} and l.likes = 1
+		ORDER BY l.likelogtime DESC)tt)
+      where rn>= #{startNum} and rn<= #{endNum}
+       ]]>
+	</select>
+	
+	<!-- 마이페이지 내가 찜한 개수 -->
+    <select id="getMypageLikeTotalA" parameterType="String" resultType="int">
+    	SELECT count(*)
+		FROM likesingo l LEFT OUTER JOIN community c
+		ON l.seq = c.seq
+		WHERE l.email= #{email} and l.likes = 1
+		ORDER BY l.likelogtime DESC
+    </select>
+    
+    <!-- 포인트사용내역리스트 -->
+    <insert id="addPointUseHistory" parameterType="java.util.Map">
+    	insert into pointHistory values (pointhistory_seq.nextval,#{email},sysdate,#{pointHistory},0,#{cost})
+    </insert>
+    
+    
+    <select id="getTotalPointHistory" parameterType="String" resultType="totalPointHistory">
+      select nvl(sum(pluspoint),0)totalPlusPoint,nvl(sum(minuspoint),0)totalMinusPoint from pointHistory where email=#{id}
+   </select>
+   
+   <!-- 포인트 충전내역 리스트 -->
+    <insert id="addPointChargeHistory" parameterType="java.util.Map">
+    	insert into pointHistory values (pointhistory_seq.nextval,#{email},sysdate,#{pointHistory},#{point},0)
+    </insert>
+     
+     <!-- 마이페이지 내가쓴글 리스트 갖고오기 -->
+	<select id="pointHistoryList" parameterType="java.util.Map"	resultType="pointHistory">
+       <![CDATA[
+       select * from 
+      (select rownum rn, tt.* from
+      (select * from pointHistory where email=#{email}  order by pointlogtime desc
+                     )tt)
+      where rn>= #{startNum} and rn<= #{endNum}
+       ]]>
+      </select>
+      
+      	 <!-- 나의 결제내역 수 -->
+    <select id="getPointHistoryTotalA" parameterType="String" resultType="int">
+       select count(*) from pointHistory where email=#{email}
+    </select>
+	
+	<!-- 커뮤니티 seq를 주렴 -->
+	<select id="getCommunitySeq" parameterType="java.util.Map" resultType="reply">
+		select * from reply where replySeq in
+		<foreach collection="check" item="data" open="(" close=")" separator=",">
+			 #{data}
+		</foreach>
+	</select>
+	
+		<!-- 포인트 충전 -->
+	<update id="updateReplyCount" parameterType="java.util.List">
+	begin
+		<foreach item="item" collection="list">
+		update community set reply = reply-1 where seq = #{item.seq};
+		</foreach>
+	end;
+	</update>
+</mapper>
